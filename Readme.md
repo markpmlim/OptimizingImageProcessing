@@ -70,7 +70,7 @@ BTW, the other 3 combinations  to create *cgImageFormat* viz. first+order32Littl
     }
 }
 ```
-The playground will crash when the playground is executed. The *pixelSize* paramter should be 1.
+The playground will crash when the code is executed. The *pixelSize* paramter should be 1.
 
 Printing one of the planar buffers (source or destination) will display a line similar to the one below:
 
