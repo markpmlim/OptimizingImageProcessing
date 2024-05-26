@@ -4,6 +4,8 @@ This Swift playground is adapted from Apple's article "Optimizing Image Processi
 
 There are 2 problems encountered. The following statement always returns **false** irrespective of whether the interleaved pixels is ARGB or RGBA.
 
+<br />
+
 **First Problem:**
 
 ```swift
@@ -27,19 +29,18 @@ b) It seems the system tags the *byteOrderInfo* of CGImage objects with a raw va
 
 ```swift
     let cgImage2 = try sourceBuffer.createCGImage(format: cgImageFormat)
-    // non-premultiplied RGBA
+    // non-premultiplied ARGB
     print(cgImage2.bitmapInfo.rawValue)     // 3 and not 0x2003
     print(cgImage2.alphaInfo.rawValue)      // 3 --> last
     print(cgImage2.byteOrderInfo.rawValue)  // 0 not 0x2000
 ```
 
-The statement below will always return *false* since the *byteOrderInfo* of CGImage objects have a raw value of 0 as noted above.
-
+As noted above, the statement below will always return *false* since the *byteOrderInfo* of CGImage objects have a raw value of 0.
 ```swift
     let littleEndian  = cgImage.byteOrderInfo == .order16Little ||
                         cgImage.byteOrderInfo == .order32Little
 ```
-Using the 3 statements solved the problem
+Using the 3 statements below, solved the problem:
 
 ```swift
     let byteOrderInfo = CGImageByteOrderInfo(rawValue:
@@ -51,8 +52,9 @@ Using the 3 statements solved the problem
         (cgImageFormat.bitmapInfo.rawValue & CGBitmapInfo.alphaInfoMask.rawValue))
 ```
 
-BTW, the other 3 combinations  to create *cgImageFormat* viz. first+order32Little, last+order32Big and first+order32Big, should with the rest of the code.
+BTW, the other 3 combinations  to create *cgImageFormat* viz. first+order32Little, last+order32Big and first+order32Big, should work the rest of the code.
 
+<br />
 
 **Second Problem:**
 
@@ -68,16 +70,16 @@ BTW, the other 3 combinations  to create *cgImageFormat* viz. first+order32Littl
     }
 }
 ```
-The playground will crash. The *pixelSize* paramter should be 1.
+The playground will crash when the playground is executed. The *pixelSize* paramter should be 1.
 
 Printing one of the planar buffers (source or destination) will display a line similar to the one below:
 
     vImage_Buffer(data: Optional(0x00007f80e9849000), height: 768, width: 1024, rowBytes: 1024)
 
 The *width* and *rowBytes* properties are both equal. If the *pixelSize* is 4, then the *rowBytes* property should be 4096.
+<br />
 
 ## Development Plaftorm
-<br />
 <br />
 
 XCode 11.6, Swift 5.0
@@ -85,6 +87,4 @@ XCode 11.6, Swift 5.0
 <br />
 **System Requirements:**
 
-is set at macOS 10.15.x
-<br />
-<br />
+macOS 10.15.x or later
