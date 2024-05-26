@@ -1,0 +1,272 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2513
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fnil\fcharset0 HelveticaNeue-Light;\f1\fnil\fcharset0 HelveticaNeue-Medium;\f2\fnil\fcharset0 HelveticaNeue;
+\f3\fnil\fcharset0 HelveticaNeue-Bold;\f4\fswiss\fcharset0 Helvetica;\f5\fnil\fcharset0 Menlo-Regular;
+}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red0\green0\blue0;\red0\green0\blue0;
+\red155\green0\blue57;\red255\green255\blue255;\red0\green0\blue0;\red28\green0\blue207;\red9\green79\blue209;
+\red197\green25\blue22;\red100\green56\blue32;}
+{\*\expandedcolortbl;;\cssrgb\c0\c0\c0\c49804;\cssrgb\c0\c0\c0\c84706;\cssrgb\c0\c0\c0;
+\cssrgb\c67843\c9804\c28627;\cssrgb\c100000\c100000\c100000;\cssrgb\c0\c0\c0\c85098;\cssrgb\c15294\c16078\c84706;\cssrgb\c0\c40784\c85490;
+\cssrgb\c82353\c18039\c10588;\cssrgb\c47059\c28627\c16471;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww25320\viewh15220\viewkind0
+\deftab720
+\pard\pardeftab720\li1170\fi-1170\ri1550\sa1170\partightenfactor0
+
+\f0\fs51\fsmilli25920 \cf2 \expnd0\expndtw0\kerning0
+Article\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs109\fsmilli54720 \cf3 Optimizing Image Processing Performance\cf0 \
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs51\fsmilli25920 \cf0 \
+Improve your app's performance by converting image buffer formats from interleaved to planar.\
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs40\fsmilli20160 \cf0 \
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs74\fsmilli37440 \cf0 Overview\
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs40\fsmilli20160 \cf0 \
+vImage operates on two image buffer formats:\
+\pard\pardeftab720\partightenfactor0
+
+\f3\b \cf0 \
+Interleaved.
+\f2\b0  Stores each pixel's color data consecutively in a single buffer. For example, the data that describes a 4-channel image (red, green, blue, and alpha) would be stored as RGBARGBARGBA\'85\
+
+\f3\b \
+Planar.
+\f2\b0  Stores each color channel in separate buffers. For example, a 4-channel image would be stored as four individual buffers containing red, green, blue, and alpha data.\
+\pard\pardeftab720\partightenfactor0
+\cf0 {{\NeXTGraphic unknown.png \width21800 \height7860 \noorient \appleattachmentpadding0 \appleembedtype0 \appleaqc
+}¬}\pard\pardeftab720\partightenfactor0
+\cf0 \
+\
+Because many vImage functions operate on a single color channel at a time\'97by converting an interleaved buffer to planar buffers\'97you can often improve your app's performance by doing this conversion manually. However, most vImage functions are available in both the interleaved and planar variants, so before you do the conversion, try both to see which works better in your context.\
+\
+In some cases, you may not want to apply a vImage operation to all four channels of an image. For example, you may know beforehand that the alpha channel is irrelevant in the images that you\'92re dealing with, or perhaps all of your images are grayscale and you only need to operate on one channel. Using planar formats makes it possible to isolate and work with only the channels you need.\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs69\fsmilli34560 \cf0 Review Interleaved Performance\
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs40\fsmilli20160 \cf0 \
+Typically, your source imagery is in interleaved format and your default option will be to use the interleaved variant of a vImage function. For example, the following code populates an interleaved 8-bit ARGB destination buffer with the result of a table lookup transformation on an 8-bit ARGB source buffer:\
+\pard\pardeftab720\partightenfactor0
+
+\f4 \cf5 \cb6 \
+var\cf7  lookUpTable = (\cf8 0\cf7 ...\cf8 255\cf7 ).map \{\
+    \cf5 return\cf7  Pixel_8(($\cf8 0\cf7  / \cf8 75\cf7 ) * \cf8 75\cf7 )\
+\}\
+\
+vImageTableLookUp_ARGB8888(&sourceBuffer,\
+                           &destinationBuffer,\
+                           nil,\
+                           &lookUpTable,\
+                           &lookUpTable,\
+                           &lookUpTable,\
+                           vImage_Flags(kvImageNoFlags))
+\f5 \cf0 \cb1 \
+\pard\pardeftab720\partightenfactor0
+
+\f2 \cf0 \
+For information on logging CPU performance, see {\field{\*\fldinst{HYPERLINK "apple-reference-documentation://ts2793189"}}{\fldrslt \cf9 Logging}}.\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs69\fsmilli34560 \cf0 Convert an Interleaved Source Buffer to Planar Buffers\
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs40\fsmilli20160 \cf0 \
+First create a planar buffer for each color component of the source image you want to work with. The following code interrogates 
+\f4 format
+\f2 \'97the {\field{\*\fldinst{HYPERLINK "apple-reference-documentation://hs1zFxzTlj"}}{\fldrslt 
+\f4 \cf9 vImage_CGImageFormat}} structure that represents the source image format\'97to calculate the number of components. (To learn more about Core Graphics image formats, see {\field{\*\fldinst{HYPERLINK "apple-reference-documentation://ts2943380"}}{\fldrslt \cf9 Creating a Core Graphics Image Format}}.)\
+\pard\pardeftab720\partightenfactor0
+
+\f4 \cf5 \cb6 \
+let\cf7  componentCount = format.componentCount
+\f5 \cf0 \cb1 \
+\pard\pardeftab720\partightenfactor0
+
+\f2 \cf0 \
+You can now create an array of initialized buffers for each color component. Note that each planar buffer's 
+\f4 pixelBits
+\f2  value is set to the source image's {\field{\*\fldinst{HYPERLINK "apple-reference-documentation://hslxohUWQC"}}{\fldrslt 
+\f4 \cf9 bitsPerComponent}} value.\
+\pard\pardeftab720\partightenfactor0
+
+\f4 \cf5 \cb6 \
+var\cf7  argbSourcePlanarBuffers: [vImage_Buffer] = (\cf8 0\cf7  ..< componentCount).map \{ \cf8 _\cf7  \cf5 in\cf7 \
+    \cf5 guard\cf7  \cf5 let\cf7  buffer = \cf5 try\cf7 ? vImage_Buffer(width: Int(sourceBuffer.width),\
+                                          height: Int(sourceBuffer.height),\
+                                          bitsPerPixel: format.bitsPerComponent) \cf5 else\cf7  \{\
+                                            fatalError(\cf10 "Error creating source buffers."\cf7 )\
+    \}\
+ \
+    \cf5 return\cf7  buffer\
+\}\
+
+\f5 \cf0 \cb1 \
+\pard\pardeftab720\partightenfactor0
+
+\f2 \cf0 Assuming your source image contains four 8-bit channels, the {\field{\*\fldinst{HYPERLINK "apple-reference-documentation://hsu0enenb2"}}{\fldrslt 
+\f4 \cf9 vImageConvert_ARGB8888toPlanar8(_:_:_:_:_:_:)}} function populates the planar buffers with the contents of the interleaved source image:\
+\pard\pardeftab720\partightenfactor0
+
+\f4 \cf7 \cb6 \
+vImageConvert_ARGB8888toPlanar8(&sourceBuffer,\
+                                &argbSourcePlanarBuffers[\cf8 0\cf7 ],\
+                                &argbSourcePlanarBuffers[\cf8 1\cf7 ],\
+                                &argbSourcePlanarBuffers[\cf8 2\cf7 ],\
+                                &argbSourcePlanarBuffers[\cf8 3\cf7 ],\
+                                vImage_Flags(kvImageNoFlags))
+\f5 \cf0 \cb1 \
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs69\fsmilli34560 \cf0 \
+Initialize the Destination Planar Buffers\
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs40\fsmilli20160 \cf0 \
+Creating the destination buffers is similar to creating the source buffers:\
+\pard\pardeftab720\partightenfactor0
+
+\f4 \cf5 \cb6 \
+var\cf7  argbDestinationPlanarBuffers: [vImage_Buffer] = (\cf8 0\cf7  ..< componentCount).map \{ \cf8 _\cf7  \cf5 in\cf7 \
+    \cf5 guard\cf7  \cf5 let\cf7  buffer = \cf5 try\cf7 ? vImage_Buffer(width: Int(sourceBuffer.width),\
+                                          height: Int(sourceBuffer.height),\
+                                          bitsPerPixel: format.bitsPerComponent) \cf5 else\cf7  \{\
+                                            fatalError(\cf10 "Error creating destination buffers."\cf7 )\
+    \}\
+\
+    \cf5 return\cf7  buffer\
+\}
+\f5 \cf0 \cb1 \
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs69\fsmilli34560 \cf0 \
+Derive the Alpha Channel Index\
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs40\fsmilli20160 \cf0 \
+Because you don't want to apply the lookup table transform to the alpha channel, you need to derive the index of the alpha channel from the source image's {\field{\*\fldinst{HYPERLINK "apple-reference-documentation://hsLbOyt8B-"}}{\fldrslt 
+\f4 \cf9 alphaInfo}} property. The following code populates the 
+\f4 alphaIndex
+\f2  variable with the index of the alpha channel:\
+\pard\pardeftab720\partightenfactor0
+
+\f4 \cf5 \cb6 \
+let\cf7  alphaIndex: Int?\
+\
+\cf5 let\cf7  littleEndian = cgImage.byteOrderInfo == .order16Little ||\
+                   cgImage.byteOrderInfo == .order32Little\
+\
+\cf5 switch\cf7  cgImage.alphaInfo \{\
+    \cf5 case\cf7  .first, .noneSkipFirst, .premultipliedFirst:\
+        alphaIndex = littleEndian ? componentCount - \cf8 1\cf7  : \cf8 0\cf7 \
+    \cf5 case\cf7  .last, .noneSkipLast, .premultipliedLast:\
+        alphaIndex = littleEndian ? \cf8 0\cf7  : componentCount - \cf8 1\cf7 \
+    \cf5 default\cf7 :\
+        alphaIndex = nil\
+\}
+\f5 \cf0 \cb1 \
+\pard\pardeftab720\partightenfactor0
+
+\f2 \cf0 \
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs69\fsmilli34560 \cf0 Copy the Source Alpha to the Destination Alpha\
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs40\fsmilli20160 \cf0 \
+Use the 
+\f4 alphaIndex
+\f2  value to copy the alpha information directly from the appropriate source buffer to the appropriate destination buffer:\
+\pard\pardeftab720\partightenfactor0
+
+\f4 \cf5 \cb6 \
+if\cf7  \cf5 let\cf7  alphaIndex = alphaIndex \{\
+    \cf5 do\cf7  \{\
+        \cf5 try\cf7  argbSourcePlanarBuffers[alphaIndex].copy(destinationBuffer: &argbDestinationPlanarBuffers[alphaIndex],\
+                                                     pixelSize: Int(format.bitsPerPixel) / \cf8 8\cf7 )\
+    \} \cf5 catch\cf7  \{\
+        fatalError(\cf10 "Error copying alpha buffer: \cf7 \\\cf10 (\cf11 error\cf7 .localizedDescription\cf10 )."\cf7 )\
+    \}\
+\}
+\f5 \cf0 \cb1 \
+\pard\pardeftab720\partightenfactor0
+
+\f2 \cf0 \
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs69\fsmilli34560 \cf0 Apply the Lookup Table to the Planar Buffers\
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs40\fsmilli20160 \cf0 \
+To apply the lookup table transform to the color planar buffers, execute {\field{\*\fldinst{HYPERLINK "apple-reference-documentation://hsPVJzofpo"}}{\fldrslt 
+\f4 \cf9 vImageTableLookUp_Planar8(_:_:_:_:)}} on each one:\
+\pard\pardeftab720\partightenfactor0
+
+\f4 \cf5 \cb6 \
+for\cf7  index \cf5 in\cf7  \cf8 0\cf7  ..< componentCount \cf5 where\cf7  index != alphaIndex \{\
+    vImageTableLookUp_Planar8(&argbSourcePlanarBuffers[index],\
+                              &argbDestinationPlanarBuffers[index],\
+                              &lookUpTable,\
+                              vImage_Flags(kvImageNoFlags))\
+\}\
+
+\f5 \cf0 \cb1 \
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs69\fsmilli34560 \cf0 Convert the Planar Buffers Back to an Interleaved Buffer\
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs40\fsmilli20160 \cf0 \
+With the planar buffers populated with the transform operation results, you're ready to convert the buffers back to an interleaved image. Create an interleaved destination buffer that matches the source buffer:\
+\pard\pardeftab720\partightenfactor0
+
+\f4 \cf5 \cb6 \
+guard\cf7  \cf5 var\cf7  destinationBuffer = \cf5 try\cf7 ? vImage_Buffer(width: Int(sourceBuffer.width),\
+                                                 height: Int(sourceBuffer.height),\
+                                                 bitsPerPixel: format.bitsPerPixel) \cf5 else\cf7  \{\
+                                                    fatalError(\cf10 "Error creating destination buffers."\cf7 )\
+\}\
+
+\f5 \cf0 \cb1 \
+\pard\pardeftab720\partightenfactor0
+
+\f2 \cf0 The {\field{\*\fldinst{HYPERLINK "apple-reference-documentation://hs7xzibXnK"}}{\fldrslt 
+\f4 \cf9 vImageConvert_Planar8toARGB8888(_:_:_:_:_:_:)}} function interleaves the four planar buffers, writing the results to the destination buffer:\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f4 \cf7 \cb6 vImageConvert_Planar8toARGB8888(&argbDestinationPlanarBuffers[\cf8 0\cf7 ],\
+                                &argbDestinationPlanarBuffers[\cf8 1\cf7 ],\
+                                &argbDestinationPlanarBuffers[\cf8 2\cf7 ],\
+                                &argbDestinationPlanarBuffers[\cf8 3\cf7 ],\
+                                &destinationBuffer,\
+                                vImage_Flags(kvImageNoFlags))
+\f5 \cf0 \cb1 \
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs69\fsmilli34560 \cf0 \
+Free the Buffer Memory\
+\pard\pardeftab720\partightenfactor0
+
+\f2\fs40\fsmilli20160 \cf0 \
+After you\'92re finished working with the buffers, it\'92s important that you free the memory allocated to them:\
+\pard\pardeftab720\partightenfactor0
+
+\f4 \cf7 \cb6 destinationBuffer.free()\
+\cf5 \
+for\cf7  buffer \cf5 in\cf7  argbSourcePlanarBuffers \{\
+    buffer.free()\
+\}\
+\cf5 for\cf7  buffer \cf5 in\cf7  argbDestinationPlanarBuffers \{\
+    buffer.free()\
+\}}
