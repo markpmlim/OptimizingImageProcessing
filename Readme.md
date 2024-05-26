@@ -1,6 +1,6 @@
 ## Optimizing Image Processing Performance
 
-This Swift playground is adapted from Apple's article "Optimizing Image Processing Performance". The  .rtfd is from a copy of the program's documentation distributed with XCode 11.6.
+This Swift playground is adapted from Apple's article "Optimizing Image Processing Performance". The  .rtfd is a copy of the program's documentation distributed with XCode 11.6.
 
 There are 2 problems encountered. The following statement always returns **false** irrespective of whether the interleaved pixels is ARGB or RGBA.
 
@@ -75,3 +75,16 @@ Printing one of the planar buffers (source or destination) will display a line s
     vImage_Buffer(data: Optional(0x00007f80e9849000), height: 768, width: 1024, rowBytes: 1024)
 
 The *width* and *rowBytes* properties are both equal. If the *pixelSize* is 4, then the *rowBytes* property should be 4096.
+
+## Development Plaftorm
+<br />
+<br />
+
+XCode 11.6, Swift 5.0
+<br />
+<br />
+**System Requirements:**
+
+is set at macOS 10.15.x
+<br />
+<br />
