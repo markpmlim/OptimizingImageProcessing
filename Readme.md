@@ -2,18 +2,20 @@
 
 This Swift playground is adapted from Apple's article "Optimizing Image Processing Performance". The  .rtfd is a copy of the program's documentation distributed with XCode 11.6.
 
-There are 2 problems encountered. The following statement always returns **false** irrespective of whether the interleaved pixels is ARGB or RGBA.
+There are 2 problems encountered. 
 
 <br />
 
 **First Problem:**
+
+The following statement always returns **false** irrespective of whether the interleaved pixels is ARGB or RGBA.
 
 ```swift
     let littleEndian  = cgImage.byteOrderInfo == .order16Little ||
                         cgImage.byteOrderInfo == .order32Little
 ```
 
-To ensure that the flag *littleEndian* returns true when the playground is executed on a LE device, two steps are taken.
+To ensure that the flag *littleEndian* returns **true** when the playground is executed on a LE device, two steps are taken.
 
 a) The vImage_CGImageFormat, *cgImageFormat* is created with the following bitmapInfo:
 
@@ -30,17 +32,17 @@ b) It seems the system tags the *byteOrderInfo* of CGImage objects with a raw va
 ```swift
     let cgImage2 = try sourceBuffer.createCGImage(format: cgImageFormat)
     // non-premultiplied ARGB
-    print(cgImage2.bitmapInfo.rawValue)     // 3 and not 0x2003
-    print(cgImage2.alphaInfo.rawValue)      // 3 --> last
-    print(cgImage2.byteOrderInfo.rawValue)  // 0 not 0x2000
+    print(String(format:"0x%04X", cgImage2.bitmapInfo.rawValue))    // 3 and not 0x2003
+    print(String(format:"0x%04X", cgImage2.alphaInfo.rawValue))     // 3 --> last
+    print(String(format:"0x%04X", cgImage2.byteOrderInfo.rawValue)) // 0 not 0x2000
 ```
 
-As noted above, the statement below will always return *false* since the *byteOrderInfo* of CGImage objects have a raw value of 0.
+As noted above, the statement below will always return **false** since the *byteOrderInfo* of CGImage objects have a raw value of 0.
 ```swift
     let littleEndian  = cgImage.byteOrderInfo == .order16Little ||
                         cgImage.byteOrderInfo == .order32Little
 ```
-Using the 3 statements below, solved the problem:
+The problem was solved with the 3 statements below: 
 
 ```swift
     let byteOrderInfo = CGImageByteOrderInfo(rawValue:
@@ -52,7 +54,7 @@ Using the 3 statements below, solved the problem:
         (cgImageFormat.bitmapInfo.rawValue & CGBitmapInfo.alphaInfoMask.rawValue))
 ```
 
-BTW, the other 3 combinations  to create *cgImageFormat* viz. first+order32Little, last+order32Big and first+order32Big, should work the rest of the code.
+BTW, the other 3 combinations to create *cgImageFormat* viz. first+order32Little, last+order32Big and first+order32Big, should work the rest of the code.
 
 <br />
 
@@ -70,13 +72,13 @@ BTW, the other 3 combinations  to create *cgImageFormat* viz. first+order32Littl
     }
 }
 ```
-The playground will crash when the code is executed. The *pixelSize* paramter should be 1.
+The playground will crash when the code  above is executed. The *pixelSize* parameter should be 1. Why?
 
-Printing one of the planar buffers (source or destination) will display a line similar to the one below:
+When one of the planar buffers (source or destination) is printed a line similar to the one below is displayed:
 
     vImage_Buffer(data: Optional(0x00007f80e9849000), height: 768, width: 1024, rowBytes: 1024)
 
-The *width* and *rowBytes* properties are both equal. If the *pixelSize* is 4, then the *rowBytes* property should be 4096.
+The *width* and *rowBytes* properties of the vImage_Buffer object are both equal. If the *pixelSize* is 4, then the *rowBytes* property should be 4096.
 <br />
 
 ## Development Plaftorm
